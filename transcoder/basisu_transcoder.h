@@ -361,7 +361,7 @@ namespace basist
 
 		uint32_t m_num_blocks_x;
 		uint32_t m_num_blocks_y;
-		uint32_t m_total_blocks;
+		uint32_t m_total_blocks;	// including mipmaps
 
 		uint32_t m_first_slice_index;
 
