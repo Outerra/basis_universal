@@ -105,6 +105,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);BASISU_SUPPORT_SSE=1;</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,6 +149,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <OmitFramePointers>true</OmitFramePointers>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
