@@ -467,22 +467,24 @@ namespace basisu
 			if (!load_single_image(name.c_str(), img))
 				return false;
 
-			int ch = 1;
 			image aux;
-			do {
-				size_t offs = offnext + 1;
-				offnext = filename.find(';', offs);
-				size_t oend = offnext != std::string::npos
-					? offnext
-					: filename.length();
+			for (int ch = 1; ch<3; ++ch)
+			{
+				if (offnext == std::string::npos)
+					img.clear_channel(ch, 0);
+				else
+				{
+					size_t offs = offnext + 1;
+					offnext = filename.find(';', offs);
+					size_t oend = offnext != std::string::npos
+						? offnext
+						: filename.length();
 
-				name = std::string(filename, offs, oend - offs);
-				if (!load_single_image(name.c_str(), aux) || !img.set_channel(aux, ch))
-					return false;
-
-				ch++;
+					name = std::string(filename, offs, oend - offs);
+					if (!load_single_image(name.c_str(), aux) || !img.set_channel(aux, ch))
+						return false;
+				}
 			}
-			while (offnext != std::string::npos);
 
 			return true;
 		}

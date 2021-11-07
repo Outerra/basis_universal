@@ -2420,12 +2420,21 @@ namespace basisu
 				color_rgba* pDst = &m_pixels[y * m_pitch];
 
 				for (uint32_t x = 0; x < m_width; x++)
-				{
 					pDst[x].m_comps[channel] = pSrc[x].m_comps[0];
-				}
 			}
 
 			return true;
+		}
+
+		void clear_channel(int channel, uint8_t v = 0)
+		{
+			for (uint32_t y = 0; y < m_height; y++)
+			{
+				color_rgba* pDst = &m_pixels[y * m_pitch];
+
+				for (uint32_t x = 0; x < m_width; x++)
+					pDst[x].m_comps[channel] = v;
+			}
 		}
 
 		void init(const uint8_t *pImage, uint32_t width, uint32_t height, uint32_t comps)
