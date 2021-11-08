@@ -89,6 +89,7 @@ static void print_usage()
 		" -linear: Use linear colorspace metrics (instead of the default sRGB), and by default linear (not sRGB) mipmap filtering.\n"
 		" -output_file filename: Output .basis/.ktx filename\n"
 		" -output_path: Output .basis/.ktx files to specified directory.\n"
+		" -skip_existing: Skip processing if output file already exists.\n"
 		" -debug: Enable codec debug print to stdout (slightly slower).\n"
 		" -debug_images: Enable codec debug images (much slower).\n"
 		" -stats: Compute and display image quality metrics (slightly slower).\n"
@@ -138,6 +139,7 @@ static void print_usage()
 		" -mip_linear: Keep image in linear light during mipmap filtering (i.e. do not convert to/from sRGB for filtering purposes)\n"
 		" -mip_scale X: Set mipmap filter kernel's scale, lower=sharper, higher=more blurry, default is 1.0\n"
 		" -mip_filter X: Set mipmap filter kernel, default is kaiser, filters: box, tent, bell, blackman, catmullrom, mitchell, etc.\n"
+		" -mip_coverage X Y: compute alpha coverage using ref value X over channel Y\n"
 		" -mip_renorm: Renormalize normal map to unit length vectors after filtering\n"
 		" -mip_clamp: Use clamp addressing on borders, instead of wrapping\n"
 		" -mip_fast: Use faster mipmap generation (resample from previous mip, not always first/largest mip level). The default (as of 1/2021)\n"
@@ -273,7 +275,8 @@ public:
 		m_etc1_only(false),
 		m_fuzz_testing(false),
 		m_compare_ssim(false),
-		m_bench(false)
+		m_bench(false),
+		m_skip_existing(false)
 	{
 		m_comp_params.m_compression_level = basisu::maximum<int>(0, BASISU_DEFAULT_COMPRESSION_LEVEL - 1);
 	}
@@ -457,6 +460,8 @@ public:
 				m_output_path = arg_v[arg_index + 1];
 				arg_count++;
 			}
+			else if (strcasecmp(pArg, "-skip_existing") == 0)
+				m_skip_existing = true;
 			else if (strcasecmp(pArg, "-debug") == 0)
 			{
 				m_comp_params.m_debug = true;
@@ -577,6 +582,22 @@ public:
 				m_comp_params.m_mip_filter = arg_v[arg_index + 1];
 				// TODO: Check filter
 				arg_count++;
+			}
+			else if (strcasecmp(pArg, "-mip_coverage") == 0)
+			{
+				REMAINING_ARGS_CHECK(2);
+				m_comp_params.m_mip_coverage = true;
+				m_comp_params.m_coverage_ref = (float)atof(arg_v[arg_index + 1]);
+				m_comp_params.m_coverage_channel = atoi(arg_v[arg_index + 2]);
+				arg_count += 2;
+
+				if (m_comp_params.m_coverage_channel < 0 || m_comp_params.m_coverage_channel > 3)
+				{
+					error_printf("Channel out of range 0..3");
+					return false;
+				}
+
+				m_comp_params.m_coverage_ref = clamp<float>(m_comp_params.m_coverage_ref, 1.0f / 255, 254.f / 255);
 			}
 			else if (strcasecmp(pArg, "-mip_renorm") == 0)
 				m_comp_params.m_mip_renormalize = true;
@@ -796,6 +817,7 @@ public:
 	bool m_fuzz_testing;
 	bool m_compare_ssim;
 	bool m_bench;
+	bool m_skip_existing;
 };
 
 static bool expand_multifile(command_line_params &opts)
@@ -1066,6 +1088,12 @@ static bool compress_mode(command_line_params &opts)
 				string_combine_path(filename, opts.m_output_path.c_str(), filename.c_str());
 
 			params.m_out_filename = filename;
+		}
+
+		if (opts.m_skip_existing && _access(params.m_out_filename.c_str(), 0) != -1)
+		{
+			printf("Skipping existing file \"%s\".\n", params.m_out_filename.c_str());
+			continue;
 		}
 
 		basis_compressor c;

@@ -459,8 +459,9 @@ namespace basisu
 
 	bool load_image(const char* pFilename, image& img)
 	{
+		const char sep = '+';
 		std::string filename = pFilename;
-		size_t offnext = filename.find('+');
+		size_t offnext = filename.find(sep);
 		if (offnext != std::string::npos) {
 			//multichannel names
 			std::string name = std::string(filename, 0, offnext);
@@ -475,7 +476,7 @@ namespace basisu
 				else
 				{
 					size_t offs = offnext + 1;
-					offnext = filename.find(';', offs);
+					offnext = filename.find(sep, offs);
 					size_t oend = offnext != std::string::npos
 						? offnext
 						: filename.length();
@@ -2115,6 +2116,93 @@ namespace basisu
 			return nullptr;
 
 		return read_tga(&filedata[0], (uint32_t)filedata.size(), width, height, n_chans);
+	}
+
+	float image::test_coverage(uint8_t channel, float coverage_ref, float scale) const
+	{
+		const int w = m_width;
+		const int h = m_height;
+
+		constexpr int n = 4;
+		float coverage = 0;
+
+		const float fscale = scale * (1.0f / 255);
+
+		for (int y = 0; y < h - 1; y++) {
+			const color_rgba* pLine0 = &m_pixels[y * m_pitch];
+			const color_rgba* pLine1 = pLine0 + m_pitch;
+
+			for (int x = 0; x < w - 1; x++) {
+
+				float alpha00 = saturate(pLine0[x + 0][channel] * fscale);
+				float alpha10 = saturate(pLine0[x + 1][channel] * fscale);
+				float alpha01 = saturate(pLine1[x + 0][channel] * fscale);
+				float alpha11 = saturate(pLine1[x + 1][channel] * fscale);
+
+				float texel_coverage = 0;
+				for (int sy = 0; sy < n; sy++) {
+					float fy = (sy + 0.5f) / n;
+					for (int sx = 0; sx < n; sx++) {
+						float fx = (sx + 0.5f) / n;
+						float alpha = alpha00 * (1 - fx) * (1 - fy) + alpha10 * fx * (1 - fy) + alpha01 * (1 - fx) * fy + alpha11 * fx * fy;
+						if (alpha > coverage_ref)
+							texel_coverage += 1;
+					}
+				}
+				coverage += texel_coverage / (n * n);
+			}
+		}
+
+		return coverage / float((w - 1) * (h - 1));
+	}
+
+	void image::scale_coverage(uint8_t channel, float desired_coverage, float coverage_ref)
+	{
+		float min_alpha_scale = 0;
+		float max_alpha_scale = 4;
+		float scale = 1;
+		float best_alpha_scale = 1;
+		float best_error = FLT_MAX;
+
+		// Determine desired scale using a binary search. Hardcoded to 10 steps max.
+		for (int i = 0; i < 10; i++) {
+			float current_coverage = test_coverage(channel, coverage_ref, scale);
+
+			float error = fabsf(current_coverage - desired_coverage);
+			if (error < best_error) {
+				best_error = error;
+				best_alpha_scale = scale;
+			}
+
+			if (current_coverage < desired_coverage) {
+				min_alpha_scale = scale;
+			}
+			else if (current_coverage > desired_coverage) {
+				max_alpha_scale = scale;
+			}
+			else
+				break;
+
+			scale = (min_alpha_scale + max_alpha_scale) * 0.5f;
+		}
+
+		// scale channel
+		const int w = m_width;
+		const int h = m_height;
+
+		for (int y = 0; y < h; y++) {
+			color_rgba* pLine = &m_pixels[y * m_pitch];
+
+			for (int x = 0; x < w; x++) {
+				float v = pLine[x][channel];
+				v *= best_alpha_scale;
+				if (v < 0)
+					v = 0;
+				if (v > 255)
+					v = 255;
+				pLine[x][channel] = uint8_t(round(v));
+			}
+		}
 	}
 
 	void image::debug_text(uint32_t x_ofs, uint32_t y_ofs, uint32_t scale_x, uint32_t scale_y, const color_rgba& fg, const color_rgba* pBG, bool alpha_only, const char* pFmt, ...)

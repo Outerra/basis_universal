@@ -395,6 +395,10 @@ namespace basisu
 				level_img.renormalize_normal_map();
 		}
 #else
+		float coverage = 0;
+		if (m_params.m_mip_coverage)
+			coverage = img.test_coverage((uint8_t)m_params.m_coverage_channel, m_params.m_coverage_ref, 1);
+
 		for (uint32_t level = 1; level < total_levels; level++)
 		{
 			const uint32_t level_width = maximum<uint32_t>(1, img.get_width() >> level);
@@ -420,6 +424,9 @@ namespace basisu
 
 			if (m_params.m_mip_renormalize)
 				level_img.renormalize_normal_map();
+
+			if (m_params.m_mip_coverage)
+				level_img.scale_coverage((uint8_t)m_params.m_coverage_channel, coverage, m_params.m_coverage_ref);
 		}
 #endif
 

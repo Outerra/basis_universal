@@ -2437,6 +2437,9 @@ namespace basisu
 			}
 		}
 
+		float test_coverage(uint8_t channel, float coverage_ref, float scale = 1) const;
+		void scale_coverage(uint8_t channel, float desired_coverage, float coverage_ref);
+
 		void init(const uint8_t *pImage, uint32_t width, uint32_t height, uint32_t comps)
 		{
 			assert(comps >= 1 && comps <= 4);
